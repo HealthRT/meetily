@@ -25,6 +25,7 @@ export interface NotificationSettings {
   recording_notifications: boolean;
   time_based_reminders: boolean;
   meeting_reminders: boolean;
+  meeting_detection_enabled: boolean;
   respect_do_not_disturb: boolean;
   notification_sound: boolean;
   system_permission_granted: boolean;

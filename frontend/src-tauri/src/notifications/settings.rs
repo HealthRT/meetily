@@ -1,12 +1,17 @@
-use serde::{Deserialize, Serialize};
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
+use dirs;
 use log::info as log_info;
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tauri::{AppHandle, Runtime};
-use dirs;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct NotificationSettings {
+    /// Passively detect likely conference calls from local audio-session metadata.
+    /// This never opens a capture stream and remains opt-in.
+    pub meeting_detection_enabled: bool,
+
     /// Enable recording lifecycle notifications (start/stop/pause/resume)
     pub recording_notifications: bool,
 
@@ -36,6 +41,7 @@ pub struct NotificationSettings {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct NotificationPreferences {
     /// Show recording started notifications
     pub show_recording_started: bool,
@@ -65,6 +71,7 @@ pub struct NotificationPreferences {
 impl Default for NotificationSettings {
     fn default() -> Self {
         Self {
+            meeting_detection_enabled: false,
             recording_notifications: true,
             time_based_reminders: true,
             meeting_reminders: true,
@@ -112,8 +119,8 @@ impl<R: Runtime> ConsentManager<R> {
 
     /// Get the path where notification settings are stored
     fn get_settings_path() -> Result<PathBuf> {
-        let mut path = dirs::config_dir()
-            .ok_or_else(|| anyhow!("Could not find config directory"))?;
+        let mut path =
+            dirs::config_dir().ok_or_else(|| anyhow!("Could not find config directory"))?;
 
         path.push("meetily");
         path.push("notifications.json");
@@ -251,8 +258,11 @@ pub fn get_default_settings() -> NotificationSettings {
 pub fn validate_settings(settings: &NotificationSettings) -> Result<()> {
     // Validate meeting reminder minutes
     for &minutes in &settings.notification_preferences.meeting_reminder_minutes {
-        if minutes > 1440 { // More than 24 hours
-            return Err(anyhow!("Meeting reminder cannot be more than 24 hours (1440 minutes)"));
+        if minutes > 1440 {
+            // More than 24 hours
+            return Err(anyhow!(
+                "Meeting reminder cannot be more than 24 hours (1440 minutes)"
+            ));
         }
     }
 
@@ -264,6 +274,7 @@ pub fn merge_with_defaults(partial: NotificationSettings) -> NotificationSetting
     let _defaults = NotificationSettings::default();
 
     NotificationSettings {
+        meeting_detection_enabled: partial.meeting_detection_enabled,
         recording_notifications: partial.recording_notifications,
         time_based_reminders: partial.time_based_reminders,
         meeting_reminders: partial.meeting_reminders,
@@ -273,5 +284,26 @@ pub fn merge_with_defaults(partial: NotificationSettings) -> NotificationSetting
         consent_given: partial.consent_given,
         manual_dnd_mode: partial.manual_dnd_mode,
         notification_preferences: partial.notification_preferences,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::NotificationSettings;
+
+    #[test]
+    fn meeting_detection_is_opt_in_by_default() {
+        assert!(!NotificationSettings::default().meeting_detection_enabled);
+    }
+
+    #[test]
+    fn legacy_settings_deserialize_with_detection_disabled() {
+        let settings: NotificationSettings = serde_json::from_value(serde_json::json!({
+            "recording_notifications": false
+        }))
+        .expect("legacy notification settings should remain readable");
+
+        assert!(!settings.meeting_detection_enabled);
+        assert!(!settings.recording_notifications);
     }
 }

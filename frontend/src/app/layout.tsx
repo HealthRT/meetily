@@ -25,6 +25,7 @@ import { RecordingPostProcessingProvider } from '@/contexts/RecordingPostProcess
 import { ImportAudioDialog, ImportDropOverlay } from '@/components/ImportAudio'
 import { ImportDialogProvider } from '@/contexts/ImportDialogContext'
 import { isAudioExtension, getAudioFormatsDisplayList } from '@/constants/audioFormats'
+import { useMeetingDetection } from '@/hooks/useMeetingDetection'
 
 
 const sourceSans3 = Source_Sans_3({
@@ -59,6 +60,14 @@ function ConditionalImportDialog({
       preselectedFile={importFilePath}
     />
   );
+}
+function MeetingDetectionManager({
+  onboardingCompleted,
+}: {
+  onboardingCompleted: boolean;
+}) {
+  useMeetingDetection(onboardingCompleted);
+  return null;
 }
 
 // export { metadata } from './metadata'
@@ -237,6 +246,7 @@ export default function RootLayout({
           <RecordingStateProvider>
             <TranscriptProvider>
               <ConfigProvider>
+                <MeetingDetectionManager onboardingCompleted={onboardingCompleted} />
                 <OllamaDownloadProvider>
                   <OnboardingProvider>
                     <UpdateCheckProvider>
