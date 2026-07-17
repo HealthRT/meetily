@@ -3,6 +3,7 @@ name: PR Check
 on:
   pull_request:
     branches: [main, devtest]
+    types: [opened, synchronize, reopened, edited]
   push:
     branches: [main, devtest]
 
@@ -33,6 +34,7 @@ jobs:
 
   frontend:
     name: Frontend
+    if: github.event.action != 'edited'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -66,6 +68,7 @@ jobs:
 
   meeting-detection-rust:
     name: Meeting Detection Rust
+    if: github.event.action != 'edited'
     runs-on: macos-latest
     timeout-minutes: 45
     env:
@@ -98,7 +101,7 @@ jobs:
 
   dependency-review:
     name: Dependency Review
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && github.event.action != 'edited'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
