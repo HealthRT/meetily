@@ -38,6 +38,7 @@ env:
 
 jobs:
   build-windows:
+    if: vars.ENABLE_BUILD_WORKFLOWS == 'true'
     name: Build Windows (x64)
     runs-on: windows-latest
     permissions:

@@ -46,6 +46,7 @@ on:
 
 jobs:
   build:
+    if: vars.ENABLE_BUILD_WORKFLOWS == 'true'
     permissions:
       contents: write
     runs-on: ${{ inputs.platform }}
