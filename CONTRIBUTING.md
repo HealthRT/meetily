@@ -125,6 +125,13 @@ checks must run for every pull request.
 4. Required CI checks must pass
 5. Use squash or rebase merging to preserve linear history
 
+### Automated Review
+
+Cursor Bugbot reviews pull requests through the repository's GitHub App
+integration. It is separate from GitHub Actions: pushing a new commit triggers
+both systems, while rerunning an Actions workflow does not retrigger Bugbot.
+Resolve or explicitly dismiss actionable Bugbot findings before merging.
+
 ## Getting Help
 
 - Create an issue for questions
