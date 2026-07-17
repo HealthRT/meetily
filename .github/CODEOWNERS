@@ -1,0 +1,5 @@
+# Default owner for repository changes.
+* @HealthRT
+
+# Workflow changes require explicit repository-owner review.
+/.github/workflows/ @HealthRT
