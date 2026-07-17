@@ -11,6 +11,10 @@ import {
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { useConfig } from '@/contexts/ConfigContext';
+import {
+  createMeetingDetectionMonitorQueue,
+  MeetingDetectionMonitorQueue,
+} from './meetingDetectionMonitorQueue';
 
 interface ConferenceCallDetected {
   version: number;
@@ -37,19 +41,17 @@ export function useMeetingDetection(onboardingCompleted: boolean) {
   const seenSessionsRef = useRef(new Set<string>());
   const activeSessionsRef = useRef(new Set<string>());
   const detectionEnabledRef = useRef(false);
-  const monitorCommandQueueRef = useRef<Promise<void>>(Promise.resolve());
-
-  const setMonitoring = useCallback((enabled: boolean) => {
-    const command = enabled
-      ? 'start_system_audio_monitoring'
-      : 'stop_system_audio_monitoring';
-    const operation = monitorCommandQueueRef.current.then(
-      () => invoke<void>(command),
-      () => invoke<void>(command),
+  const monitorCommandQueueRef = useRef<MeetingDetectionMonitorQueue | null>(null);
+  if (monitorCommandQueueRef.current === null) {
+    monitorCommandQueueRef.current = createMeetingDetectionMonitorQueue(
+      (command) => invoke<void>(command),
     );
-    monitorCommandQueueRef.current = operation.catch(() => undefined);
-    return operation;
-  }, []);
+  }
+
+  const setMonitoring = useCallback(
+    (enabled: boolean) => monitorCommandQueueRef.current!.setEnabled(enabled),
+    [],
+  );
 
   const dismissPrompt = useCallback((sessionId: string) => {
     toast.dismiss(toastIdForSession(sessionId));

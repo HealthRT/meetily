@@ -197,6 +197,9 @@ export function PreferenceSettings() {
             <p className="text-xs text-gray-500 mt-2">
               Meetily inspects local audio-session metadata only, not audio content. Browser-based calls can be ambiguous, so detection may occasionally be incorrect.
             </p>
+            <p className="text-xs text-gray-500 mt-2">
+              Native notifications follow macOS Focus settings. Meetily&apos;s manual Do Not Disturb mode suppresses detection prompts entirely.
+            </p>
             {meetingDetectionSupported === false && (
               <p className="text-xs text-amber-700 mt-2">
                 Meeting auto-detection requires macOS 14.2 or later.

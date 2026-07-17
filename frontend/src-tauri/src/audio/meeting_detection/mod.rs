@@ -139,7 +139,7 @@ impl<P: ObservationProvider, C: Clock> Drop for MeetingMetadataDetector<P, C> {
 #[cfg(test)]
 mod tests {
     use std::sync::{
-        atomic::{AtomicU64, Ordering},
+        atomic::{AtomicBool, AtomicU64, Ordering},
         Mutex,
     };
 
@@ -191,6 +191,39 @@ mod tests {
 
         assert!(detector.tick().is_empty());
         clock.set(3);
+        assert!(matches!(
+            detector.tick().as_slice(),
+            [MeetingDetectionEvent::MeetingStarted(_)]
+        ));
+    }
+
+    #[test]
+    fn external_suppression_probe_prevents_session_promotion() {
+        let clock = Arc::new(ManualClock::default());
+        let observations = Arc::new(InjectedObservations::default());
+        observations.set(vec![ProcessObservation {
+            pid: 1,
+            bundle_id: Some("us.zoom.xos".to_owned()),
+            name: "zoom.us".to_owned(),
+            input_active: true,
+            output_active: true,
+        }]);
+        let suppressed = Arc::new(AtomicBool::new(true));
+        let mut detector =
+            MeetingMetadataDetector::with_components(observations.clone(), clock.clone());
+        detector.set_suppression_probe({
+            let suppressed = Arc::clone(&suppressed);
+            move || suppressed.load(Ordering::Relaxed)
+        });
+
+        assert!(detector.tick().is_empty());
+        clock.set(3);
+        assert!(detector.tick().is_empty());
+
+        suppressed.store(false, Ordering::Relaxed);
+        clock.set(4);
+        assert!(detector.tick().is_empty());
+        clock.set(7);
         assert!(matches!(
             detector.tick().as_slice(),
             [MeetingDetectionEvent::MeetingStarted(_)]
