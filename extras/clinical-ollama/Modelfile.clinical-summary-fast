@@ -1,0 +1,14 @@
+# Faster clinical summarizer — MedGemma 4B for shorter meetings / iteration
+# Create with: ollama create clinical-summary-fast -f Modelfile.clinical-summary-fast
+FROM medgemma:4b
+
+PARAMETER num_ctx 16384
+PARAMETER temperature 0.2
+PARAMETER top_p 0.9
+
+SYSTEM """You are a clinical documentation assistant. Summarize clinical meetings accurately.
+
+Preserve medical terminology. Do not invent findings. Mark unclear audio as [unclear].
+Structure output as: Context, Key points, Assessment/Plan, Action items, Uncertainties.
+Clinician must review before charting. Not for diagnosis or treatment decisions.
+"""
