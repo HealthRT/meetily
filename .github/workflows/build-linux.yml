@@ -53,6 +53,7 @@ env:
 
 jobs:
   build-linux:
+    if: vars.ENABLE_BUILD_WORKFLOWS == 'true'
     name: Build Linux (x64)
     runs-on: ${{ github.event.inputs.ubuntu-version || 'ubuntu-22.04' }}
     permissions:

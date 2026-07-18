@@ -33,6 +33,7 @@ env:
 
 jobs:
   build-macos:
+    if: vars.ENABLE_BUILD_WORKFLOWS == 'true'
     name: Build macOS (Apple Silicon)
     runs-on: macos-latest
     permissions:

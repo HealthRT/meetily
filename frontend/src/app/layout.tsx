@@ -25,6 +25,12 @@ import { RecordingPostProcessingProvider } from '@/contexts/RecordingPostProcess
 import { ImportAudioDialog, ImportDropOverlay } from '@/components/ImportAudio'
 import { ImportDialogProvider } from '@/contexts/ImportDialogContext'
 import { isAudioExtension, getAudioFormatsDisplayList } from '@/constants/audioFormats'
+import { useMeetingDetection } from '@/hooks/useMeetingDetection'
+import { MeetingDetectionOverlay } from '@/components/meeting-detection/MeetingDetectionOverlay'
+import {
+  MEETING_DETECTION_START_REQUEST,
+  MeetingDetectionStartRequest,
+} from '@/hooks/meetingDetectionOverlayProtocol'
 
 
 const sourceSans3 = Source_Sans_3({
@@ -60,10 +66,51 @@ function ConditionalImportDialog({
     />
   );
 }
+function MeetingDetectionManager({
+  onboardingCompleted,
+}: {
+  onboardingCompleted: boolean;
+}) {
+  useMeetingDetection(onboardingCompleted);
+  return null;
+}
 
 // export { metadata } from './metadata'
 
 export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <html lang="en">
+      <body className={`${sourceSans3.variable} font-sans antialiased`}>
+        <WindowContent>{children}</WindowContent>
+      </body>
+    </html>
+  )
+}
+
+function WindowContent({ children }: { children: React.ReactNode }) {
+  const [windowKind, setWindowKind] = useState<'loading' | 'main' | 'overlay'>('loading')
+
+  useEffect(() => {
+    const isOverlay =
+      new URLSearchParams(window.location.search).get('window') === 'meeting-detection'
+    setWindowKind(isOverlay ? 'overlay' : 'main')
+  }, [])
+
+  if (windowKind === 'loading') return null
+  if (windowKind === 'overlay') return <MeetingDetectionOverlay />
+  return (
+    <>
+      <MainApplication>{children}</MainApplication>
+      <Toaster position="bottom-center" richColors closeButton />
+    </>
+  )
+}
+
+function MainApplication({
   children,
 }: {
   children: React.ReactNode
@@ -126,6 +173,21 @@ export default function RootLayout({
       unlisten.then(fn => fn());
     };
   }, [showOnboarding]);
+
+  useEffect(() => {
+    const unlisten = listen<MeetingDetectionStartRequest>(
+      MEETING_DETECTION_START_REQUEST,
+      ({ payload }) => {
+        window.dispatchEvent(new CustomEvent('start-recording-from-sidebar', {
+          detail: payload,
+        }));
+      },
+    );
+
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, []);
 
   // Handle file drop for audio import
   const handleFileDrop = useCallback((paths: string[]) => {
@@ -231,12 +293,12 @@ export default function RootLayout({
   }
 
   return (
-    <html lang="en">
-      <body className={`${sourceSans3.variable} font-sans antialiased`}>
+    <>
         <AnalyticsProvider>
           <RecordingStateProvider>
             <TranscriptProvider>
               <ConfigProvider>
+                <MeetingDetectionManager onboardingCompleted={onboardingCompleted} />
                 <OllamaDownloadProvider>
                   <OnboardingProvider>
                     <UpdateCheckProvider>
@@ -275,9 +337,6 @@ export default function RootLayout({
             </TranscriptProvider>
           </RecordingStateProvider>
         </AnalyticsProvider>
-
-        <Toaster position="bottom-center" richColors closeButton />
-      </body>
-    </html>
+    </>
   )
 }

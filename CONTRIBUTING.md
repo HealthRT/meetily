@@ -1,4 +1,4 @@
-# Contributing to Meeting Minutes Updates
+# Contributing to Meetily
 
 Thank you for your interest in contributing to Meetily! This document provides guidelines and instructions for contributing to this project.
 
@@ -15,23 +15,23 @@ Thank you for your interest in contributing to Meetily! This document provides g
 1. Fork the repository
 2. Clone your fork:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/meeting-minutes.git
+   git clone https://github.com/YOUR_USERNAME/meetily.git
    ```
 3. Add the original repository as upstream:
    ```bash
-   git remote add upstream https://github.com/Zackriya-Solutions/meeting-minutes.git
+   git remote add upstream https://github.com/Zackriya-Solutions/meetily.git
    ```
 4. Create a new branch from `devtest`:
    ```bash
    git checkout devtest
    git pull upstream devtest
-   git checkout -b feature/your-feature-name
+   git checkout -b feat/your-feature-name
    ```
 
 ### Development Process
 
 1. Always start your work from the `devtest` branch
-2. Create a new branch for each feature/fix
+2. Create a focused branch using `feat/`, `fix/`, `docs/`, `test/`, or `chore/`
 3. Make your changes
 4. Write or update tests as needed
 5. Ensure all tests pass
@@ -54,44 +54,18 @@ Before starting work on a new feature or bug fix:
 
 1. Create a PR from your feature branch to `devtest`
 2. Link the PR to the related issue using the issue number (e.g., "Fixes #123")
-3. Fill out the PR template completely
-4. Ensure CI checks pass
-5. Request review from at least one maintainer
-6. Address any review comments
-7. Once approved, the PR will be merged into `devtest`
+3. Use a Conventional Commit title such as `feat(audio): detect meeting activity`
+4. Fill out the PR template completely
+5. Ensure all required CI checks pass
+6. Request review from at least one maintainer when an independent reviewer is available
+7. Address every review comment
+8. Once approved, the PR will be merged into `devtest`
+9. Promote tested releases from `devtest` to `main` with a release PR
 
 ### PR Template
 
-```markdown
-## Description
-[Describe your changes here]
-
-## Related Issue
-[Link to the issue this PR addresses]
-
-## Type of Change
-- [ ] Bug fix
-- [ ] New feature
-- [ ] Documentation update
-- [ ] Performance improvement
-- [ ] Code refactoring
-- [ ] Other (please describe)
-
-## Testing
-- [ ] Unit tests added/updated
-- [ ] Manual testing performed
-- [ ] All tests pass
-
-## Documentation
-- [ ] Documentation updated
-- [ ] No documentation needed
-
-## Checklist
-- [ ] Code follows project style
-- [ ] Self-reviewed the code
-- [ ] Added comments for complex code
-- [ ] Updated README if needed
-```
+GitHub automatically loads `.github/pull_request_template.md`. Complete every
+applicable section and replace placeholder text before requesting review.
 
 ## Code Style
 
@@ -117,15 +91,24 @@ Types:
 - docs: Documentation changes
 - style: Code style changes
 - refactor: Code refactoring
+- perf: Performance improvements
 - test: Adding/updating tests
+- build: Build system or dependency changes
+- ci: CI/CD changes
 - chore: Maintenance tasks
+
+Use the same format for pull request titles. Do not add `[skip ci]`; required
+checks must run for every pull request.
 
 ## Testing
 
-- Write unit tests for new features
-- Update existing tests when modifying code
-- Ensure all tests pass before submitting PR
-- Include integration tests for complex features
+- Write unit tests for new features and update affected existing tests
+- Run `pnpm test` and `pnpm build` from `frontend/` for frontend changes
+- Run focused Rust tests from the repository root, for example
+  `cargo test -p meetily meeting_detection --lib`
+- Run `git diff --check`
+- Include integration or manual tests for platform-specific behavior
+- Document any test that could not be run and why
 
 ## Documentation
 
@@ -136,10 +119,18 @@ Types:
 
 ## Review Process
 
-1. PRs require at least one review
+1. PRs should receive at least one independent review when another maintainer is available
 2. Address all review comments
 3. Keep the PR up to date with `devtest`
-4. Squash commits if requested
+4. Required CI checks must pass
+5. Use squash or rebase merging to preserve linear history
+
+### Automated Review
+
+Cursor Bugbot reviews pull requests through the repository's GitHub App
+integration. It is separate from GitHub Actions: pushing a new commit triggers
+both systems, while rerunning an Actions workflow does not retrigger Bugbot.
+Resolve or explicitly dismiss actionable Bugbot findings before merging.
 
 ## Getting Help
 
@@ -149,4 +140,4 @@ Types:
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the project's MIT License. 
+By contributing, you agree that your contributions will be licensed under the project's MIT License.

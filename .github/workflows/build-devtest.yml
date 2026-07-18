@@ -25,6 +25,7 @@ env:
 
 jobs:
   build-devtest:
+    if: vars.ENABLE_BUILD_WORKFLOWS == 'true'
     name: Build ${{ matrix.platform-name }}
     runs-on: ${{ matrix.platform }}
     permissions:

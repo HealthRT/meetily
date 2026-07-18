@@ -898,6 +898,11 @@ pub async fn stop_recording<R: Runtime>(
 
 /// Check if recording is active
 pub async fn is_recording() -> bool {
+    is_recording_sync()
+}
+
+/// Synchronous recording-state check for native background services.
+pub fn is_recording_sync() -> bool {
     IS_RECORDING.load(Ordering::SeqCst)
 }
 

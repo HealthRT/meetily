@@ -11,6 +11,7 @@ concurrency:
 jobs:
   # STEP 1: Create draft release first
   create-release:
+    if: vars.ENABLE_RELEASE_WORKFLOWS == 'true' && vars.ENABLE_BUILD_WORKFLOWS == 'true'
     permissions:
       contents: write
     runs-on: ubuntu-latest
