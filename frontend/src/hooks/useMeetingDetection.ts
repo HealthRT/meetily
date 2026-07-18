@@ -170,7 +170,6 @@ export function useMeetingDetection(onboardingCompleted: boolean) {
 
     detectionEnabledRef.current = true;
     let cancelled = false;
-    let startRequested = false;
     const unlisteners: UnlistenFn[] = [];
 
     const setup = async () => {
@@ -199,8 +198,11 @@ export function useMeetingDetection(onboardingCompleted: boolean) {
         }
         unlisteners.push(unlistenEnded);
 
-        startRequested = true;
+        if (cancelled) return;
         await setMonitoring(true);
+        if (cancelled) {
+          await setMonitoring(false);
+        }
       } catch (error) {
         if (!cancelled) {
           console.error('[MeetingDetection] Failed to start monitoring:', error);
@@ -215,11 +217,9 @@ export function useMeetingDetection(onboardingCompleted: boolean) {
       detectionEnabledRef.current = false;
       unlisteners.forEach((unlisten) => unlisten());
       dismissAllPrompts();
-      if (startRequested) {
-        setMonitoring(false).catch((error) => {
-          console.debug('[MeetingDetection] Failed to stop monitoring:', error);
-        });
-      }
+      setMonitoring(false).catch((error) => {
+        console.debug('[MeetingDetection] Failed to stop monitoring:', error);
+      });
     };
   }, [
     dismissAllPrompts,

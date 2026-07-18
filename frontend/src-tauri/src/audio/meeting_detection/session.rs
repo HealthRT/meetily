@@ -87,6 +87,18 @@ impl MeetingSessionTracker {
         let mut aggregates = aggregate_observations(observations);
         let mut events = Vec::with_capacity(1);
 
+        if recording_active {
+            self.pending = None;
+            if let Some(active) = self.active.take() {
+                events.push(MeetingDetectionEvent::MeetingEnded(MeetingEndedEvent {
+                    session_id: active.id,
+                    app: active.aggregate.app,
+                    app_name: active.aggregate.app.display_name().to_owned(),
+                }));
+            }
+            return events;
+        }
+
         if let Some(active) = self.active.as_mut() {
             if let Some(index) = aggregates
                 .iter()
@@ -107,11 +119,6 @@ impl MeetingSessionTracker {
                 }
             }
 
-            return events;
-        }
-
-        if recording_active {
-            self.pending = None;
             return events;
         }
 
@@ -393,6 +400,26 @@ mod tests {
         assert!(!tracker.has_active_session());
         assert!(update(&mut tracker, 4, zoom(), false).is_empty());
         assert!(update(&mut tracker, 7, zoom(), false).len() == 1);
+    }
+
+    #[test]
+    fn recording_ends_an_active_detection_session() {
+        let mut tracker = MeetingSessionTracker::default();
+        let zoom = || vec![observation(1, "us.zoom.xos", true, true)];
+        update(&mut tracker, 0, zoom(), false);
+        let started = update(&mut tracker, 3, zoom(), false);
+        let session_id = match &started[0] {
+            MeetingDetectionEvent::MeetingStarted(event) => event.session_id.clone(),
+            _ => panic!("expected meeting start"),
+        };
+
+        let events = update(&mut tracker, 4, zoom(), true);
+        assert!(matches!(
+            events.as_slice(),
+            [MeetingDetectionEvent::MeetingEnded(event)] if event.session_id == session_id
+        ));
+        assert!(!tracker.has_active_session());
+        assert!(update(&mut tracker, 5, zoom(), true).is_empty());
     }
 
     #[test]
