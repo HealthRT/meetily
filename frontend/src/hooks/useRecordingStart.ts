@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { emitTo } from '@tauri-apps/api/event';
 import { useTranscripts } from '@/contexts/TranscriptContext';
 import { useSidebar } from '@/components/Sidebar/SidebarProvider';
 import { useConfig } from '@/contexts/ConfigContext';
@@ -8,6 +9,11 @@ import { recordingService } from '@/services/recordingService';
 import Analytics from '@/lib/analytics';
 import { showRecordingNotification } from '@/lib/recordingNotification';
 import { toast } from 'sonner';
+import {
+  MEETING_DETECTION_START_RESULT,
+  MeetingDetectionStartRequest,
+  MeetingDetectionStartStatus,
+} from './meetingDetectionOverlayProtocol';
 
 interface UseRecordingStartReturn {
   handleRecordingStart: () => Promise<void>;
@@ -232,9 +238,28 @@ export function useRecordingStart(
 
   // Listen for direct recording trigger from sidebar when already on home page
   useEffect(() => {
-    const handleDirectStart = async () => {
+    const handleDirectStart = async (event: Event) => {
+      const request =
+        (event as CustomEvent<MeetingDetectionStartRequest>).detail;
+      const respond = async (
+        status: MeetingDetectionStartStatus,
+        message?: string,
+      ) => {
+        if (!request?.request_id) return;
+        try {
+          await emitTo('meeting-detection', MEETING_DETECTION_START_RESULT, {
+            request_id: request.request_id,
+            status,
+            message,
+          });
+        } catch (error) {
+          console.error('Failed to acknowledge meeting detection action:', error);
+        }
+      };
+
       if (isRecording || isAutoStarting) {
         console.log('Recording already in progress, ignoring direct start event');
+        await respond('already-recording');
         return;
       }
 
@@ -261,6 +286,12 @@ export function useRecordingStart(
         }
         setStatus(RecordingStatus.IDLE);
         setIsAutoStarting(false);
+        await respond(
+          'blocked',
+          isDownloading
+            ? 'The transcription model is still downloading.'
+            : 'A transcription model must be installed before recording.',
+        );
         return;
       }
 
@@ -286,14 +317,23 @@ export function useRecordingStart(
         clearTranscripts();
         setIsMeetingActive(true);
         Analytics.trackButtonClick('start_recording', 'sidebar_direct');
+        await respond('started');
 
         // Show recording notification if enabled
-        await showRecordingNotification();
+        try {
+          await showRecordingNotification();
+        } catch (notificationError) {
+          console.debug('Recording started, but its notification failed:', notificationError);
+        }
       } catch (error) {
         console.error('Failed to start recording from sidebar:', error);
         setStatus(RecordingStatus.ERROR, error instanceof Error ? error.message : 'Failed to start recording from sidebar');
         alert('Failed to start recording. Check console for details.');
         Analytics.trackButtonClick('start_recording_error', 'sidebar_direct');
+        await respond(
+          'failed',
+          error instanceof Error ? error.message : 'Failed to start recording.',
+        );
       } finally {
         setIsAutoStarting(false);
       }

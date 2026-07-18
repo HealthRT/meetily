@@ -2,12 +2,9 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { listen, UnlistenFn } from '@tauri-apps/api/event';
+import { emitTo, listen, UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import {
-  isPermissionGranted,
-  sendNotification,
-} from '@tauri-apps/plugin-notification';
+import { sendNotification } from '@tauri-apps/plugin-notification';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { useConfig } from '@/contexts/ConfigContext';
@@ -56,6 +53,9 @@ export function useMeetingDetection(onboardingCompleted: boolean) {
   const dismissPrompt = useCallback((sessionId: string) => {
     toast.dismiss(toastIdForSession(sessionId));
     activeSessionsRef.current.delete(sessionId);
+    void emitTo('meeting-detection', 'meeting-detection-overlay-hide').catch((error) => {
+      console.debug('[MeetingDetection] Failed to hide floating prompt:', error);
+    });
   }, []);
 
   const dismissAllPrompts = useCallback(() => {
@@ -63,6 +63,9 @@ export function useMeetingDetection(onboardingCompleted: boolean) {
       toast.dismiss(toastIdForSession(sessionId));
     });
     activeSessionsRef.current.clear();
+    void emitTo('meeting-detection', 'meeting-detection-overlay-hide').catch((error) => {
+      console.debug('[MeetingDetection] Failed to hide floating prompt:', error);
+    });
   }, []);
 
   const startRecording = useCallback((sessionId: string) => {
@@ -77,11 +80,22 @@ export function useMeetingDetection(onboardingCompleted: boolean) {
     router.push('/');
   }, [dismissPrompt, router]);
 
-  const dismissSession = useCallback((sessionId: string) => {
-    dismissPrompt(sessionId);
-    invoke('dismiss_meeting_detection_session', { sessionId }).catch((error) => {
+  const dismissSession = useCallback(async (sessionId: string) => {
+    try {
+      const dismissed = await invoke<boolean>(
+        'dismiss_meeting_detection_session',
+        { sessionId },
+      );
+      if (!dismissed) {
+        throw new Error('This meeting prompt is no longer active.');
+      }
+      dismissPrompt(sessionId);
+    } catch (error) {
       console.error('[MeetingDetection] Failed to dismiss session:', error);
-    });
+      toast.error('Could not dismiss meeting prompt', {
+        description: error instanceof Error ? error.message : undefined,
+      });
+    }
   }, [dismissPrompt]);
 
   const showHiddenWindowNotification = useCallback(async (
@@ -90,8 +104,6 @@ export function useMeetingDetection(onboardingCompleted: boolean) {
     try {
       if (!detectionEnabledRef.current) return;
       if (await getCurrentWindow().isFocused()) return;
-      if (!detectionEnabledRef.current) return;
-      if (!(await isPermissionGranted())) return;
       if (!detectionEnabledRef.current) return;
 
       sendNotification({
@@ -108,7 +120,7 @@ export function useMeetingDetection(onboardingCompleted: boolean) {
     }
   }, []);
 
-  const handleDetected = useCallback((detection: ConferenceCallDetected) => {
+  const handleDetected = useCallback(async (detection: ConferenceCallDetected) => {
     if (
       !detectionEnabledRef.current ||
       !detection.session_id ||
@@ -128,23 +140,32 @@ export function useMeetingDetection(onboardingCompleted: boolean) {
       ? `${detection.app_name} appears to be in a conference call. Start recording?`
       : `${detection.app_name} is using the microphone. Start meeting notes?`;
 
-    toast(title, {
-      id: toastIdForSession(detection.session_id),
-      description,
-      duration: Infinity,
-      dismissible: false,
-      closeButton: false,
-      action: {
-        label: 'Start Recording',
-        onClick: () => startRecording(detection.session_id),
-      },
-      cancel: {
-        label: 'Dismiss',
-        onClick: () => dismissSession(detection.session_id),
-      },
-    });
+    let mainWindowFocused = false;
+    try {
+      mainWindowFocused = await getCurrentWindow().isFocused();
+    } catch (error) {
+      console.debug('[MeetingDetection] Could not read window focus:', error);
+    }
+    if (!detectionEnabledRef.current) return;
 
-    void showHiddenWindowNotification(detection);
+    if (mainWindowFocused) {
+      toast(title, {
+        id: toastIdForSession(detection.session_id),
+        description,
+        duration: Infinity,
+        closeButton: false,
+        action: {
+          label: 'Start Recording',
+          onClick: () => startRecording(detection.session_id),
+        },
+        cancel: {
+          label: 'Dismiss',
+          onClick: () => void dismissSession(detection.session_id),
+        },
+      });
+    } else {
+      void showHiddenWindowNotification(detection);
+    }
   }, [dismissSession, showHiddenWindowNotification, startRecording]);
 
   useEffect(() => {
@@ -179,7 +200,7 @@ export function useMeetingDetection(onboardingCompleted: boolean) {
 
         const unlistenDetected = await listen<ConferenceCallDetected>(
           'conference-call-detected',
-          (event) => handleDetected(event.payload),
+          (event) => void handleDetected(event.payload),
         );
         if (cancelled) {
           unlistenDetected();

@@ -12,6 +12,7 @@
     "app": {
         "windows": [
             {
+                "label": "main",
                 "title": "meetily",
                 "width": 1100,
                 "height": 700,
@@ -19,6 +20,22 @@
                 "fullscreen": false,
                 "theme": "Light",
                 "decorations": true
+            },
+            {
+                "label": "meeting-detection",
+                "title": "Meeting detected",
+                "url": "/?window=meeting-detection",
+                "width": 440,
+                "height": 96,
+                "resizable": false,
+                "fullscreen": false,
+                "visible": false,
+                "focus": false,
+                "decorations": false,
+                "transparent": true,
+                "alwaysOnTop": true,
+                "skipTaskbar": true,
+                "shadow": true
             }
         ],
         "macOSPrivateApi": true,
@@ -73,6 +90,21 @@
                                 }
                             ]
                         }
+                    ]
+                },
+                {
+                    "identifier": "meeting-detection-overlay",
+                    "description": "Floating meeting detection prompt",
+                    "windows": [
+                        "meeting-detection"
+                    ],
+                    "permissions": [
+                        "core:event:default",
+                        "core:window:default",
+                        "core:window:allow-show",
+                        "core:window:allow-hide",
+                        "core:window:allow-set-position",
+                        "core:window:allow-set-focus"
                     ]
                 }
             ]
